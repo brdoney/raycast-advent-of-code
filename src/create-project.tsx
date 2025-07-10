@@ -1,4 +1,4 @@
-import { Form, ActionPanel, Action, showToast, getPreferenceValues, Toast, open } from "@raycast/api";
+import { Form, ActionPanel, Action, showToast, getPreferenceValues, Toast, open, captureException } from "@raycast/api";
 import { AocError, saveInput, useYears } from "./util/api";
 import { useEffect, useMemo } from "react";
 import { FormValidation, useForm, usePromise } from "@raycast/utils";
@@ -77,11 +77,11 @@ export default function Command() {
             message: `Project path: "${e.path}"`,
           });
         } else {
+          captureException(e);
           showToast({
             style: Toast.Style.Failure,
             title: "Error creating project",
           });
-          throw e;
         }
       }
     },

@@ -141,7 +141,7 @@ function handleRateLimit(info: string): never {
   throw new AocError("SOLVE_ERROR", info);
 }
 
-export function useYears(completedProjects: Map<number, Project[]> | undefined) {
+export function useYears(completedProjects?: Map<number, Project[]> | undefined) {
   return useCachedPromise(
     async (completed) => {
       const res = await fetch(`${API_URL}/events`, {
