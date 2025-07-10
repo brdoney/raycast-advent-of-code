@@ -4,11 +4,20 @@ import * as cheerio from "cheerio";
 import { pathDoesntExist, Project } from "./projects";
 import path from "node:path";
 
-const API_URL = "https://adventofcode.com";
+export const API_URL = "https://adventofcode.com";
 
 const USER_AGENT_HEADER = {
   "User-Agent": "bre.doney@gmail.com",
 };
+
+function authenticatedHeaders(sessionToken: string) {
+  return {
+    headers: {
+      cookie: `session=${sessionToken}`,
+      ...USER_AGENT_HEADER,
+    },
+  };
+}
 
 let canSubmit = true;
 let delayStart = 0;
@@ -42,12 +51,7 @@ export async function saveInput(year: number, day: number, projectPath: string, 
 
   // The file doesn't exist yet, so continue
   try {
-    const res = await fetch(`${API_URL}/${year}/day/${day}/input`, {
-      headers: {
-        cookie: `session=${sessionToken}`,
-        ...USER_AGENT_HEADER,
-      },
-    });
+    const res = await fetch(`${API_URL}/${year}/day/${day}/input`, authenticatedHeaders(sessionToken));
 
     if (res.status !== 200) {
       throw new Error(String(res.status));
@@ -55,6 +59,63 @@ export async function saveInput(year: number, day: number, projectPath: string, 
 
     const text = await res.text();
     await fs.writeFile(inputPath, text.replace(/\n$/, ""));
+  } catch (e: unknown) {
+    handleErrors(e);
+  }
+}
+
+export async function getStars(sessionToken: string): Promise<Map<number, number>> {
+  try {
+    const res = await fetch(`${API_URL}/events`, authenticatedHeaders(sessionToken));
+
+    if (res.status !== 200) {
+      throw new Error(String(res.status));
+    }
+
+    const body = await res.text();
+    const $ = cheerio.load(body);
+    return new Map(
+      $(".eventlist-event")
+        .map((_, el) => $(el).text())
+        .toArray()
+        .map((text) => {
+          const [yearString, starsString] = text.split(" ");
+          const year = parseInt(yearString.slice(1, -1)); // Remove brackets
+          const stars = parseInt(starsString.slice(0, -1)); // Cut off asterisk symbol
+          return [year, stars];
+        }),
+    );
+  } catch (e: unknown) {
+    handleErrors(e);
+  }
+}
+
+export async function getStarsForYear(year: number, sessionToken: string): Promise<Map<number, number>> {
+  try {
+    const res = await fetch(`${API_URL}/${year}`, authenticatedHeaders(sessionToken));
+
+    if (res.status !== 200) {
+      throw new Error(String(res.status));
+    }
+
+    const body = await res.text();
+    const $ = cheerio.load(body);
+    return new Map(
+      $(".calendar a")
+        .map((_, el) => {
+          const e = $(el);
+          const day = parseInt(e.attr("href")?.split("/").at(-1) ?? "0");
+          if (e.hasClass("calendar-complete")) {
+            return { day: day, stars: 1 };
+          } else if (e.hasClass("calendar-verycomplete")) {
+            return { day: day, stars: 2 };
+          } else {
+            return { day: day, stars: 0 };
+          }
+        })
+        .toArray()
+        .map(({ day, stars }) => [day, stars]),
+    );
   } catch (e: unknown) {
     handleErrors(e);
   }
@@ -205,9 +266,9 @@ export async function sendSolution(
     const info =
       $main.length !== 0
         ? $main
-            .text()
-            .replace(/\[.*\]/, "")
-            .trim()
+          .text()
+          .replace(/\[.*\]/, "")
+          .trim()
         : "Can't find the main element";
 
     if (info.includes("That's the right answer")) {

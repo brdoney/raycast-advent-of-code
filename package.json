@@ -21,8 +21,14 @@
     },
     {
       "name": "submit-solution",
-      "title": "Submit solution",
+      "title": "Submit Solution",
       "description": "Submit a solution for a project",
+      "mode": "view"
+    },
+    {
+      "name": "view-stars",
+      "title": "View Stars",
+      "description": "View the user's stars",
       "mode": "view"
     }
   ],

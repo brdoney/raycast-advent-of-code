@@ -173,7 +173,7 @@ export default function Command() {
   return (
     <List
       filtering
-      navigationTitle="Search projects"
+      navigationTitle="Search Projects"
       searchBarPlaceholder="Search for an Advent of Code project"
       searchBarAccessory=<YearDropdown years={items.map((it) => it[0])} onChange={setYearFilter} />
       isLoading={isLoading}
