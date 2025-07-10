@@ -1,4 +1,14 @@
-import { Form, ActionPanel, Action, showToast, getPreferenceValues, Toast, captureException } from "@raycast/api";
+import {
+  Form,
+  ActionPanel,
+  Action,
+  showToast,
+  getPreferenceValues,
+  Toast,
+  captureException,
+  launchCommand,
+  LaunchType,
+} from "@raycast/api";
 import { FormValidation, useForm } from "@raycast/utils";
 import { AocError, sendSolution, useYears } from "./util/api";
 
@@ -67,6 +77,16 @@ export default function Command() {
           preferences.sessionToken,
         );
         if (res.status === "success") {
+          try {
+            launchCommand({
+              name: "confetti",
+              extensionName: "raycast",
+              ownerOrAuthorName: "raycast",
+              type: LaunchType.UserInitiated,
+            });
+          } catch {
+            // Not important if the command errors, since it's just for flair
+          }
           showToast({
             style: Toast.Style.Success,
             title: `Solved ${values.year}/${values.day} part ${values.part}!`,
