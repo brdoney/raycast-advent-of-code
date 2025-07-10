@@ -3,7 +3,7 @@
   "name": "advent-of-code",
   "title": "Advent of Code",
   "description": "Actions for interacting with Advent of Code via Raycast",
-  "icon": "extension-icon.png",
+  "icon": "aoc-icon.png",
   "author": "brdoney",
   "license": "MIT",
   "commands": [
