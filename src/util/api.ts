@@ -7,7 +7,7 @@ import path from "node:path";
 export const API_URL = "https://adventofcode.com";
 
 const USER_AGENT_HEADER = {
-  "User-Agent": "bre.doney@gmail.com",
+  "User-Agent": "github.com/brdoney/raycast-advent-of-code by bre.doney@gmail.com",
 };
 
 /**
