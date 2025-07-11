@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { toArray } from "./utils";
 
 export type Project = { day: number; name: string; path: string };
 
@@ -17,14 +18,6 @@ export async function* walkYearDir(yearDir: string): AsyncGenerator<Project> {
       }
     }
   }
-}
-
-async function toArray<T>(f: AsyncGenerator<T>): Promise<T[]> {
-  const res = [];
-  for await (const x of f) {
-    res.push(x);
-  }
-  return res;
 }
 
 export async function completedDaysForYear(projectsDir: string, year: number): Promise<Project[]> {

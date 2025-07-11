@@ -5,8 +5,17 @@ import path from "node:path";
 import { useEffect, useState } from "react";
 import os from "node:os";
 import { Project, completedDays } from "./util/projects";
+import ignore, { Ignore } from "ignore";
+import { Dirent } from "node:fs";
 
-function YearDropdown({ years, onChange }: { years: number[]; onChange: (newYear: number) => void }) {
+interface YearDropdownProps {
+  /** Years to show in the dropdown */
+  years: number[];
+  /** Callback to trigger when the dropdown's selected year changes */
+  onChange: (newYear: number) => void;
+}
+
+function YearDropdown({ years, onChange }: YearDropdownProps) {
   return (
     <List.Dropdown
       tooltip="Select Year"
@@ -22,73 +31,113 @@ function YearDropdown({ years, onChange }: { years: number[]; onChange: (newYear
   );
 }
 
-const ignore = new Set([
-  ".git/",
-  ".gitignore",
-  // Dependencies
-  "node_modules/",
-  // Build files
-  "out/",
-  "target/",
-  "build/",
-  // Caches
-  ".pytest_cache/",
-  "__pycache__/",
-  ".mypy_cache/",
-  // Editor folders
-  ".vscode/",
-  ".idea/",
-  ".vim/",
-  // Files
-  ".DS_Store",
-  "input.txt",
-]);
+/**
+ * Sort a and b, placing directories earlier and breaking any ties by lexicographic order.
+ * @param a - file or directory in a tree
+ * @param b - file or directory in a tree
+ * @returns a negative number if a is smaller than b, 0 if they are equal, or a
+ * positive number b is greater than a
+ */
+function sortTreeEntries(a: Dirent, b: Dirent): number {
+  const aDir = a.isDirectory();
+  const bDir = b.isDirectory();
+  if (aDir && !bDir) {
+    return -1;
+  } else if (!aDir && bDir) {
+    return 1;
+  } else {
+    return a.name.localeCompare(b.name);
+  }
+}
 
-async function getFileTreeString(dir: string, indent: string = ""): Promise<string> {
+/**
+ * @param dir - directory to convert to a tree
+ * @param baseIgnore - files to ignore, regardless of path (from extension preferences)
+ * @param ignores - the ignores we've built up from recursing through
+ * directories. Includes the patterns and the directory they were found in, so
+ * we can test paths relative to that directory.
+ * @param indent - the current indent characters, built through recursion
+ * @returns tree string starting from the given directory
+ */
+async function getFileTreeString(
+  dir: string,
+  baseIgnore: Ignore,
+  ignores: [Ignore, string][],
+  respectGitignore: boolean,
+  indent: string = "",
+): Promise<string> {
+  if (respectGitignore) {
+    // Extent the ignore with the additional info
+    try {
+      const gitignorePath = path.join(dir, ".gitignore");
+      await fs.access(gitignorePath, fs.constants.R_OK);
+      const gitignoreContent = await fs.readFile(gitignorePath);
+      ignores = [...ignores, [ignore().add(gitignoreContent.toString()), dir]];
+    } catch {
+      // There's no gitignore, so just carry on with base ignore rules
+    }
+  }
+
   const pairs = (await fs.readdir(dir, { withFileTypes: true }))
-    .map((d) => [d, `${d.name}${d.isDirectory() ? "/" : ""}`] as const)
-    .filter(([_, name]) => !ignore.has(name))
-    .toSorted(([aD, aName], [bD, bName]) => {
-      const aDir = aD.isDirectory();
-      const bDir = bD.isDirectory();
-      if (aDir && bDir) {
-        return aName.localeCompare(bName);
-      } else if (aDir) {
-        return -1;
-      } else if (bDir) {
-        return 1;
-      } else {
-        return aName.localeCompare(bName);
-      }
-    });
+    .filter(
+      (d) =>
+        // Always filter from bast ignore set
+        !baseIgnore.ignores(d.name) &&
+        // Also filter from set of ignores we've found while walking the tree
+        // Paths need to be relative to the directory we found the ignore rules in
+        !ignores.some(([ig, relativeTo]) => ig.ignores(path.relative(relativeTo, path.join(d.parentPath, d.name)))),
+    )
+    .toSorted(sortTreeEntries);
 
   let treeString = "";
-  for (const [i, [d, name]] of pairs.entries()) {
+  for (const [i, d] of pairs.entries()) {
     const isLast = i === pairs.length - 1;
 
+    const name = `${d.name}${d.isDirectory() ? "/" : ""}`;
     treeString += `${indent}${isLast ? "└─ " : "├─ "}${name}\n`;
 
+    // Recursively add children to the tree string with the appropriate indent
     if (d.isDirectory()) {
       const p = path.join(d.parentPath, d.name);
-      treeString += await getFileTreeString(p, indent + (isLast ? "   " : "│  "));
+      treeString += await getFileTreeString(
+        p,
+        baseIgnore,
+        ignores,
+        respectGitignore,
+        indent + (isLast ? "   " : "│  "),
+      );
     }
   }
   return treeString;
 }
 
+/**
+ * @param dir - directory to convert to a tree
+ * @returns a markdown string containing the tree for `dir`
+ */
 async function getTreeMarkdown(dir: string): Promise<string> {
-  const tree = await getFileTreeString(dir);
+  const preferences = getPreferenceValues<Preferences.OpenProject>();
+  // Remove padding and trailing slashes, so we don't have to add them as we're testing files later
+  const ignoreList = preferences.ignoreList.split(",").map((val) => val.trim().replace(/\/$/, ""));
+  const baseIgnore = ignore().add(ignoreList);
+
+  const tree = await getFileTreeString(dir, baseIgnore, [], preferences.respectGitignore);
   return "# Tree\n```\n" + tree + "```";
 }
 
+/**
+ * Formats dates into a short form (according to locale) like "01/01 at 12:41pm".
+ * @param date - date to format
+ * @returns formatted version of date
+ */
 function formatDate(date: Date): string {
-  const datePart = date.toLocaleDateString("en-US", {
+  const datePart = date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
-  const timePart = date.toLocaleTimeString("en-US", {
+  const timePart = date.toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
@@ -98,6 +147,11 @@ function formatDate(date: Date): string {
   return `${datePart} at ${timePart}`;
 }
 
+/**
+ * Replace the home directory portion of a path with `~`, if it is present.
+ * @param absolutePath - absolute path to potentially contract
+ * @returns the path, with the home directory portion replaced by `~` if found
+ */
 function contractTilde(absolutePath: string): string {
   const homeDir = os.homedir();
   if (absolutePath.startsWith(homeDir)) {
@@ -106,12 +160,23 @@ function contractTilde(absolutePath: string): string {
   return absolutePath;
 }
 
-function ProjectMetadata(props: { day: Project; modified: Date; accessed: Date; created: Date }) {
+interface ProjectMetadataProps {
+  /** The project the metadata is for */
+  project: Project;
+  /** When the project folder was last modified */
+  modified: Date;
+  /** When the project folder was last accessed */
+  accessed: Date;
+  /** When the project folder was created */
+  created: Date;
+}
+
+function ProjectMetadata(props: ProjectMetadataProps) {
   return (
     <List.Item.Detail.Metadata>
       <List.Item.Detail.Metadata.Label title="Metadata" />
       <List.Item.Detail.Metadata.Separator />
-      <List.Item.Detail.Metadata.Label title="Full Path" text={contractTilde(props.day.path)} />
+      <List.Item.Detail.Metadata.Label title="Full Path" text={contractTilde(props.project.path)} />
       <List.Item.Detail.Metadata.Separator />
       <List.Item.Detail.Metadata.Label title="Created" text={formatDate(props.created)} />
       <List.Item.Detail.Metadata.Separator />
@@ -124,6 +189,8 @@ function ProjectMetadata(props: { day: Project; modified: Date; accessed: Date; 
 }
 
 function ProjectDetail({ day }: { day: Project }) {
+  // We have both promises here, because Metadata components don't have an
+  // isLoading property (only the parent Detail component does)
   const { isLoading: treeIsLoading, data: tree } = useCachedPromise(getTreeMarkdown, [day.path]);
   const { isLoading: metadataIsLoading, data: metadata } = useCachedPromise(
     async (p) => {
@@ -142,7 +209,7 @@ function ProjectDetail({ day }: { day: Project }) {
     <List.Item.Detail
       isLoading={isLoading}
       markdown={tree}
-      metadata={!isLoading && metadata && <ProjectMetadata day={day} {...metadata} />}
+      metadata={!isLoading && metadata && <ProjectMetadata project={day} {...metadata} />}
     />
   );
 }

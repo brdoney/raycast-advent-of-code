@@ -11,7 +11,26 @@
       "name": "open-project",
       "title": "Open Project",
       "description": "Open project for a given day",
-      "mode": "view"
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "respectGitignore",
+          "title": "Tree view options",
+          "label": "Respect gitignore",
+          "description": "Hide files in the project's tree view based on the gitignore, if present",
+          "type": "checkbox",
+          "required": false,
+          "default": true
+        },
+        {
+          "name": "ignoreList",
+          "title": "Ignore list",
+          "description": "List of files to hide in the project's tree view",
+          "type": "textfield",
+          "required": false,
+          "default": ".git/,.gitignore,node_modules/,out/,target/,build/,.pytest_cache/,__pycache__/,.mypy_cache/,.vscode/,.idea/,.vim/,.DS_Store,input.txt"
+        }
+      ]
     },
     {
       "name": "create-project",
@@ -69,7 +88,8 @@
   "dependencies": {
     "@raycast/api": "^1.100.3",
     "@raycast/utils": "^1.17.0",
-    "cheerio": "^1.1.0"
+    "cheerio": "^1.1.0",
+    "ignore": "^7.0.5"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",
