@@ -81,7 +81,6 @@ export default function Command() {
 
   return (
     <List
-      navigationTitle="Stars"
       searchBarPlaceholder="Enter year"
       isLoading={isLoading}
       searchBarAccessory=<FilterDropdown onChange={setFilter} />
