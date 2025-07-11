@@ -23,7 +23,18 @@
       "name": "submit-solution",
       "title": "Submit Solution",
       "description": "Submit a solution for a project",
-      "mode": "view"
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "showConfetti",
+          "title": "Submission options",
+          "label": "Show confetti",
+          "description": "Show confetti after a succesful submission",
+          "type": "checkbox",
+          "required": false,
+          "default": true
+        }
+      ]
     },
     {
       "name": "view-stars",

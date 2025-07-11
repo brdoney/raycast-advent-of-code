@@ -77,13 +77,16 @@ export default function Command() {
           preferences.sessionToken,
         );
         if (res.status === "success") {
+          // Respect preference for showing confetti
           try {
-            launchCommand({
-              name: "confetti",
-              extensionName: "raycast",
-              ownerOrAuthorName: "raycast",
-              type: LaunchType.UserInitiated,
-            });
+            if (preferences.showConfetti) {
+              launchCommand({
+                name: "confetti",
+                extensionName: "raycast",
+                ownerOrAuthorName: "raycast",
+                type: LaunchType.UserInitiated,
+              });
+            }
           } catch {
             // Not important if the command errors, since it's just for flair
           }
