@@ -6,14 +6,24 @@ import { completedDays, pathDoesntExist, ProjectError, yearDirectories } from ".
 import fs from "node:fs/promises";
 import path from "node:path";
 
-type Values = {
+interface ProjectValues {
   year: string;
   day: string;
   projectName: string;
   downloadInput: boolean;
   openAfter: boolean;
-};
+}
 
+/**
+ * Create the project in the appropriate year's directory, creating the year
+ * directory if necessary (defaults to `advent{year}`).
+ * @param baseDir - the base projects directory
+ * @param currYear - the year of the project
+ * @param day - the day of the project
+ * @param projectName - the desired name of the project folder
+ * @param sessionToken - the session token, to download input.txt
+ * @returns the path of the created project
+ */
 async function createProject(
   baseDir: string,
   currYear: number,
@@ -36,7 +46,7 @@ async function createProject(
 export default function Command() {
   const preferences = getPreferenceValues<Preferences.CreateProject>();
 
-  const { handleSubmit, itemProps, setValidationError, reset, values, setValue } = useForm<Values>({
+  const { handleSubmit, itemProps, setValidationError, reset, values, setValue } = useForm<ProjectValues>({
     async onSubmit(values) {
       try {
         showToast({
@@ -44,6 +54,7 @@ export default function Command() {
           title: "Creating project",
         });
 
+        // Try creating the project in the directory
         const projectPath = await createProject(
           preferences.projectDirectory,
           parseInt(values.year),
@@ -58,6 +69,7 @@ export default function Command() {
           message: `${values.projectName} created`,
         });
 
+        // Open the project automatically if desired
         if (values.openAfter) {
           await open(projectPath, preferences.openApp);
         }

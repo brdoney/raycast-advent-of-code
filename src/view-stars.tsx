@@ -3,6 +3,13 @@ import { getProgressIcon, usePromise } from "@raycast/utils";
 import { API_URL, getStars, getStarsForYear } from "./util/api";
 import { useState } from "react";
 
+/**
+ * Returns whether an entry (day or year) passes the filter
+ * @param stars - the number of stars for the entry
+ * @param filter - the current filter value
+ * @param maxStars - the maximum number of stars for the entry
+ * @returns whether the entry passes the filter
+ */
 function passesFilter(stars: number, filter: string, maxStars: number): boolean {
   if (filter === "incomplete") {
     return stars < maxStars;
@@ -12,6 +19,13 @@ function passesFilter(stars: number, filter: string, maxStars: number): boolean 
     return true;
   }
 }
+
+/**
+ * Returns the icon to use for the entry (day or year).
+ * @param stars - number of stars for the entry
+ * @param maxStars - the maximum number of stars for the entry
+ * @returns icon to display for the list entry
+ */
 function icon(stars: number, maxStars: number): Image.Asset | Image {
   if (stars === 2) {
     return { source: Icon.CheckCircle, tintColor: "#ffff66" };

@@ -19,6 +19,11 @@ type Values = {
   answer: string;
 };
 
+/**
+ * Handle errors, either by surfacing them as toasts if they are expected, or
+ * by capturing them.
+ * @param e - error to handle
+ */
 function handleSubmitError(e: unknown) {
   if (e instanceof AocError) {
     if (e.name === "RATE_LIMIT") {
@@ -49,6 +54,12 @@ function handleSubmitError(e: unknown) {
   }
 }
 
+/**
+ * Convert from the string value to the part type, since Raycast forces
+ * dropdown values to be `string`.
+ * @param part - string version of part, either "1" or "2" (form validation
+ * prevents other values)
+ */
 function parsePart(part: string): 1 | 2 {
   const p = parseInt(part);
   if (p === 1 || p === 2) {
@@ -115,6 +126,7 @@ export default function Command() {
       year: FormValidation.Required,
       day: FormValidation.Required,
       answer: FormValidation.Required,
+      // Only accept parts 1 or 2 (shouldn't be an issue b/c we use a dropdown w/ a default)
       part: (val) => (val === "1" || val === "2" ? undefined : `Invalid part: part ${val}`),
     },
   });

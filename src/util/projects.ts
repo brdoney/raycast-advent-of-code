@@ -7,6 +7,12 @@ export type Project = { day: number; name: string; path: string };
 const dayRegex = /(\d{1,2})/;
 const yearRegex = /(\d{2,4})/;
 
+/**
+ * Asynchronously retrieves all of the projects in the given year directory.
+ *
+ * @param yearDir - the year directory to walk.
+ * @returns an async generator yielding projects in the year directory
+ */
 export async function* walkYearDir(yearDir: string): AsyncGenerator<Project> {
   const entries = await fs.opendir(yearDir);
   for await (const entry of entries) {
@@ -20,6 +26,13 @@ export async function* walkYearDir(yearDir: string): AsyncGenerator<Project> {
   }
 }
 
+/**
+ * Get a list of all the projects found for a given year.
+ *
+ * @param projectsDir - the base directory for all AoC projects (from preferences)
+ * @param year - the year to compile completed days for
+ * @returns a list of all the projects found for a given year
+ */
 export async function completedDaysForYear(projectsDir: string, year: number): Promise<Project[]> {
   const entries = await fs.opendir(projectsDir);
 
@@ -36,6 +49,12 @@ export async function completedDaysForYear(projectsDir: string, year: number): P
   return [];
 }
 
+/**
+ * Get a map of all the days completed for each year.
+ *
+ * @param projectsDir - the base directory for all AoC projects (from preferences)
+ * @returns a map from year to a list of projects for the year.
+ */
 export async function completedDays(projectsDir: string): Promise<Map<number, Project[]>> {
   const entries = await fs.opendir(projectsDir);
   // Maps from year to a list of days found
@@ -57,6 +76,12 @@ export async function completedDays(projectsDir: string): Promise<Map<number, Pr
   return years;
 }
 
+/**
+ * Get a map of the absolutely path for each year.
+ *
+ * @param projectsDir - the base directory for all AoC projects (from preferences)
+ * @returns a map from year to the absolute path for the year's projects
+ */
 export async function yearDirectories(projectsDir: string): Promise<Map<number, string>> {
   const entries = await fs.opendir(projectsDir);
   const directories = new Map<number, string>();

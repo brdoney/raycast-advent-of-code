@@ -10,7 +10,12 @@ const USER_AGENT_HEADER = {
   "User-Agent": "bre.doney@gmail.com",
 };
 
-function authenticatedHeaders(sessionToken: string) {
+/**
+ * Returns the options to use with fetch to an AoC page that requires user authentication.
+ * @param sessionToken - user's AoC session token to use for authentication
+ * @returns options to use for the request
+ */
+function authenticatedOptions(sessionToken: string) {
   return {
     headers: {
       cookie: `session=${sessionToken}`,
@@ -41,6 +46,14 @@ function handleErrors(e: unknown): never {
   throw e;
 }
 
+/**
+ * Download and save input for the given year and day to `input.txt` in the given project path.
+ *
+ * @param year - input's year
+ * @param day - input's day
+ * @param projectPath - directory to save the input in
+ * @param sessionToken - user's AoC session token
+ */
 export async function saveInput(year: number, day: number, projectPath: string, sessionToken: string): Promise<void> {
   // Project folder should exist already
   await fs.access(projectPath, fs.constants.R_OK | fs.constants.W_OK);
@@ -51,7 +64,7 @@ export async function saveInput(year: number, day: number, projectPath: string, 
 
   // The file doesn't exist yet, so continue
   try {
-    const res = await fetch(`${API_URL}/${year}/day/${day}/input`, authenticatedHeaders(sessionToken));
+    const res = await fetch(`${API_URL}/${year}/day/${day}/input`, authenticatedOptions(sessionToken));
 
     if (res.status !== 200) {
       throw new Error(String(res.status));
@@ -64,9 +77,15 @@ export async function saveInput(year: number, day: number, projectPath: string, 
   }
 }
 
+/**
+ * Get the number of stars the user has for each year.
+ *
+ * @param sessionToken - user's AoC session token
+ * @return map from year to stars for the year
+ */
 export async function getStars(sessionToken: string): Promise<Map<number, number>> {
   try {
-    const res = await fetch(`${API_URL}/events`, authenticatedHeaders(sessionToken));
+    const res = await fetch(`${API_URL}/events`, authenticatedOptions(sessionToken));
 
     if (res.status !== 200) {
       throw new Error(String(res.status));
@@ -90,9 +109,16 @@ export async function getStars(sessionToken: string): Promise<Map<number, number
   }
 }
 
+/**
+ * Get the number of stars the user has for each day in a given year.
+ *
+ * @param year - the year to get stars for
+ * @param sessionToken - user's AoC session token
+ * @return map from day to stars for the day
+ */
 export async function getStarsForYear(year: number, sessionToken: string): Promise<Map<number, number>> {
   try {
-    const res = await fetch(`${API_URL}/${year}`, authenticatedHeaders(sessionToken));
+    const res = await fetch(`${API_URL}/${year}`, authenticatedOptions(sessionToken));
 
     if (res.status !== 200) {
       throw new Error(String(res.status));
@@ -170,6 +196,10 @@ const strToNum = (time: string) => {
   return entries[time] || NaN;
 };
 
+/**
+ * Try to turn an AoC rate limit info message into an error with a readable message.
+ * @param info - the info returned by AoC that includes rate limit info.
+ */
 function handleRateLimit(info: string): never {
   const waitStr = info.match(/(one|two|three|four|five|six|seven|eight|nine|ten) (second|minute|hour|day)/);
   const waitNum = info.match(/\d+\s*(s|m|h|d)/g);
@@ -202,6 +232,7 @@ function handleRateLimit(info: string): never {
   throw new AocError("SOLVE_ERROR", info);
 }
 
+// TODO: Make this use the user's AoC stars, rather than completed projects
 export function useYears(completedProjects?: Map<number, Project[]> | undefined) {
   return useCachedPromise(
     async (completed) => {
@@ -227,6 +258,15 @@ export function useYears(completedProjects?: Map<number, Project[]> | undefined)
   );
 }
 
+/**
+ * Submit a solution to a given AoC challenge and return its result.
+ * @param year - solution's year
+ * @param day - solution's day
+ * @param part - solution's part (1 or 2)
+ * @param solution - the solution's text content
+ * @param sessionToken - the user's AoC session token
+ * @returns the solution's result
+ */
 export async function sendSolution(
   year: number,
   day: number,
