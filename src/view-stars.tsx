@@ -27,7 +27,7 @@ function passesFilter(stars: number, filter: string, maxStars: number): boolean 
  * @returns icon to display for the list entry
  */
 function icon(stars: number, maxStars: number): Image.Asset | Image {
-  if (stars === 2) {
+  if (stars === maxStars) {
     return { source: Icon.CheckCircle, tintColor: "#ffff66" };
   } else {
     return getProgressIcon(stars / maxStars, "#ffff66");
