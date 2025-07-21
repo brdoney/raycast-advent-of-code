@@ -1,8 +1,10 @@
 import fs from "node:fs/promises";
-import { useCachedPromise } from "@raycast/utils";
+import { CachedPromiseOptions, useCachedPromise } from "@raycast/utils";
 import * as cheerio from "cheerio";
 import { pathDoesntExist, Project } from "./projects";
 import path from "node:path";
+import { useRef } from "react";
+import { FunctionReturningPromise, UnwrapReturn } from "@raycast/utils/dist/types";
 
 export const API_URL = "https://adventofcode.com";
 
@@ -23,6 +25,13 @@ function authenticatedOptions(sessionToken: string) {
     },
   };
 }
+
+/** Headers to use with unauthenticated fetch requests */
+const unauthenticatedOptions = {
+  headers: {
+    ...USER_AGENT_HEADER,
+  },
+};
 
 let canSubmit = true;
 let delayStart = 0;
@@ -232,15 +241,30 @@ function handleRateLimit(info: string): never {
   throw new AocError("SOLVE_ERROR", info);
 }
 
+function useCachedPromiseOnChange<T extends FunctionReturningPromise, U = undefined>(
+  onChange: () => void,
+  fn: T,
+  args?: Parameters<T>,
+  options?: CachedPromiseOptions<T, U>,
+) {
+  const lastData = useRef<UnwrapReturn<T> | undefined>(undefined);
+
+  // Call `useCachedPromise` with appropriate arguments
+  const res = args ? useCachedPromise(fn, args, options) : useCachedPromise(fn);
+
+  if (lastData.current !== res.data) {
+    lastData.current = res.data;
+    onChange();
+  }
+
+  return res;
+}
+
 // TODO: Make this use the user's AoC stars, rather than completed projects
 export function useYears(completedProjects?: Map<number, Project[]> | undefined) {
   return useCachedPromise(
     async (completed) => {
-      const res = await fetch(`${API_URL}/events`, {
-        headers: {
-          ...USER_AGENT_HEADER,
-        },
-      });
+      const res = await fetch(`${API_URL}/events`, unauthenticatedOptions);
       const body = await res.text();
       const $ = cheerio.load(body);
       const years = $(".eventlist-event a")
@@ -255,6 +279,20 @@ export function useYears(completedProjects?: Map<number, Project[]> | undefined)
       return years;
     },
     [completedProjects],
+  );
+}
+
+export function useIncompleteDays(year: number, sessionToken: string, resetSelection: () => void) {
+  return useCachedPromiseOnChange(
+    resetSelection,
+    async (year, sessionToken) => {
+      if (Number.isNaN(year)) {
+        return;
+      }
+      const stars = await getStarsForYear(year, sessionToken);
+      return Array.from({ length: 25 }, (_, i) => i + 1).filter((it) => !stars.has(it) || (stars.get(it) ?? 2) < 2);
+    },
+    [year, sessionToken],
   );
 }
 
