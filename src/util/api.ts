@@ -242,7 +242,7 @@ function handleRateLimit(info: string): never {
 }
 
 function useCachedPromiseOnChange<T extends FunctionReturningPromise, U = undefined>(
-  onChange: () => void,
+  onChange: (newValue: UnwrapReturn<T> | undefined) => void,
   fn: T,
   args?: Parameters<T>,
   options?: CachedPromiseOptions<T, U>,
@@ -254,7 +254,7 @@ function useCachedPromiseOnChange<T extends FunctionReturningPromise, U = undefi
 
   if (lastData.current !== res.data) {
     lastData.current = res.data;
-    onChange();
+    onChange(res.data);
   }
 
   return res;
@@ -282,7 +282,11 @@ export function useYears(completedProjects?: Map<number, Project[]> | undefined)
   );
 }
 
-export function useIncompleteDays(year: number, sessionToken: string, resetSelection: () => void) {
+export function useIncompleteDays(
+  year: number,
+  sessionToken: string,
+  resetSelection: (newValue: number[] | undefined) => void,
+) {
   return useCachedPromiseOnChange(
     resetSelection,
     async (year, sessionToken) => {

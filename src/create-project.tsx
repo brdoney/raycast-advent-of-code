@@ -1,10 +1,11 @@
 import { Form, ActionPanel, Action, showToast, getPreferenceValues, Toast, open, captureException } from "@raycast/api";
-import { AocError, saveInput, useYears } from "./util/api";
-import { useEffect, useMemo } from "react";
+import { AocError, saveInput, useIncompleteDays, useYears } from "./util/api";
+import { useEffect } from "react";
 import { FormValidation, useForm, usePromise } from "@raycast/utils";
 import { completedDays, pathDoesntExist, ProjectError, yearDirectories } from "./util/projects";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { removeKeys } from "./util/utils";
 
 interface ProjectValues {
   year: string;
@@ -119,24 +120,30 @@ export default function Command() {
   // List of possible years and the currently selected year, to filter days
   const { isLoading: yearsLoading, data: years } = useYears(projects);
 
-  // The days to choose from, based on the current year and what projects already exist
-  const days = useMemo(() => {
-    if (!projects || !values.year) {
-      return [];
-    }
-    const completed = new Set(projects.get(parseInt(values.year))?.map((p) => p.day) ?? []);
-
-    // Reset day-related items since the choices are about to change
-    reset({ ...values, day: undefined, projectName: undefined });
-
-    return Array.from({ length: 25 }, (_, i) => i + 1).filter((v) => !completed.has(v));
-  }, [values.year, projects]);
+  const { isLoading: daysLoading, data: days } = useIncompleteDays(
+    parseInt(values.year),
+    preferences.sessionToken,
+    // Reset selected day whenever we need to load choices
+    (newValue) => {
+      if (newValue !== undefined && newValue.length > 0) {
+        // Update the selected day value to a reasonable default
+        setValue("day", newValue[0].toString());
+      } else {
+        // There's nothing we could select, so just remove the current value
+        reset(removeKeys(values, "day"));
+      }
+    },
+  );
 
   // Change project name on day change - exact timing doesn't matter b/c we do
   // validation later, so useEffect is fine
   useEffect(() => {
     if (values.day) {
+      // We have a selected value, so use it
       setValue("projectName", `day${values.day}`);
+    } else {
+      // We don't have a selected value for day yet
+      reset(removeKeys(values, "projectName"));
     }
   }, [values.day]);
 
@@ -166,7 +173,7 @@ export default function Command() {
       <Form.Dropdown
         title="Day"
         info="Days not attempted for selected year"
-        isLoading={yearsLoading}
+        isLoading={daysLoading}
         placeholder="Select Day"
         {...itemProps.day}
       >
